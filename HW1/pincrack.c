@@ -8,67 +8,67 @@ socket creation, communication with the server and returning
 the value to the caller of this function. 
 */
 
-    SHA_CTX shactx;
-    byte digest[SHA_DIGEST_LENGTH];
-    char digest_buf[3]; // including the nul using sprintf
-    char *pin;
-    int i; // Used for iterated index for printf char array
-    int j; // Used to enumerate the PIN code
-    int ret = -1; // Return fail code (-1) 
-    bool is_matched = true;
+   int    sd=-1, rc, bytesReceived;
+   int    pincode = 0;
+   int    i;
+   char   buffer[BUFFER_LENGTH];
+   char   server[MAX_HOST_NAME_LENGTH];
+   struct sockaddr_in serveraddr;
+   struct hostent *hostp;
 
-    if (hashLength != SHA_DIGEST_LENGTH * 2)
-    {
-        // No result for this
-        return ret;
-    }
+   do   {
+        sd = socket(AF_INET, SOCK_STREAM, 0);
+        //test error sd < 0
+        strcpy(server, SERVER_NAME);
 
-    pin = (char *) malloc(sizeof(char) * 4);
-    memset(pin, 0, sizeof(char) * 4);
-#if DEBUG
-    printf("Hash: %s, Len: %d, SHA_DIGEST_LENGTH: %d\n", hash, hashLength, SHA_DIGEST_LENGTH);
-#endif
-    for (j = 0; j < PIN_MAX_LENGTH; j++)
-    {
-        is_matched = true;
-        memset(digest, 0, sizeof(digest));
-        sprintf(pin, "%04d", j);
-        SHA1_Init(&shactx);
-        SHA1_Update(&shactx, pin, 4);
-        SHA1_Final(digest, &shactx);
-#if DEBUG
-        printf("digest: %s, pin: %s, j: %d\n", digest, pin, j);
-        for (i = 0; i < SHA_DIGEST_LENGTH; i++)
-	        printf("%02x", digest[i]);
-        putchar('\n');
-#endif
-        // check every byte if the digest and hash matched
-        // The hash, in ASCII format, has to be converted to hex format before compare with digest
-        for (i = 0; i < SHA_DIGEST_LENGTH; i++)
-        {
-            memset(digest_buf, 0, sizeof(char) * 2);
-            sprintf(digest_buf, "%02x", digest[i]);
-            if (digest_buf[0] != hash[i * 2] || digest_buf[1] != hash[i * 2 + 1])
-            {
-                is_matched = false;
-                break;
-            }
+        memset(&serveraddr, 0, sizeof(serveraddr));
+        serveraddr.sin_family      = AF_INET;
+        serveraddr.sin_port        = htons(SERVER_PORT);
+        serveraddr.sin_addr.s_addr = inet_addr(server);
+
+        if (serveraddr.sin_addr.s_addr == (unsigned long)INADDR_NONE)      {
+           hostp = gethostbyname(server);
+           if (hostp == (struct hostent *)NULL) {
+              printf("Host not found --> ");
+              break;
+           }
+
+           memcpy(&serveraddr.sin_addr,
+                  hostp->h_addr,
+                  sizeof(serveraddr.sin_addr));
         }
 
-        if (is_matched)
-        {
-            // Found the PIN code for the hash
-            ret = j;
-#if DEBUG
-            printf("Digest: ");
-            for (i = 0; i < SHA_DIGEST_LENGTH; i++)
-	            printf("%02x", digest[i]);
-            putchar('\n');
-            printf("Hash: %s, Length: %d\n", hash, hashLength);
-#endif
+        rc = connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+        // test error rc < 0
+
+        printf("Connect returned %d\n", rc);
+
+        rc = send(sd, hash, hashLength, 0);
+        // test error rc < 0
+
+        printf("send returned %d\n", rc);
+
+        bytesReceived = 0;
+        while (bytesReceived < BUFFER_LENGTH) {
+            rc = recv(sd, & buffer[bytesReceived],
+                   BUFFER_LENGTH - bytesReceived, 0);
+            // test error rc < 0 or rc == 0
+            printf("bytes received %d\n", rc);
+                bytesReceived += rc;
+
+            pincode = (buffer[0] << 8) | (buffer[1] & 0xff);
             break;
         }
-    }
 
-    return ret;
+        printf("PIN: %d\n", pincode);
+
+
+    } while (FALSE);
+
+    //    shutdown(sd, SHUT_RDWR);
+
+    if (sd != -1)
+        close(sd);
+
+    return pincode;
 }
