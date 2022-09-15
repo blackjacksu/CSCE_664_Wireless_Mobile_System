@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <openssl/sha.h>
 
-#define HASH_MAX_LENGTH 10000
+#define PIN_MAX_LENGTH 10000
+
+#define DEBUG 0
 
 typedef unsigned char byte;
 /* This function takes as arguments a SHA-1 hash and the length of it.
