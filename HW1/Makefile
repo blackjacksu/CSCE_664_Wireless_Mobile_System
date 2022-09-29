@@ -9,6 +9,9 @@ OPENSSL_HEADERS_DIR = /usr/local/ssl
 
 all: client server sha1test libpincrack.a pincracktest
 
+pincracktest_dll: pincracktest.c pincrack.c pincrack.h
+	$(GCC) $(GCC_OPTIONS)  -o pincracktest_dll -L. pincracktest.c -lpincrack
+
 client: client.c
 	$(GCC) $(GCC_OPTIONS) client.c -o client
 
@@ -23,6 +26,9 @@ sha1test: sha1test.c
 
 libpincrack.a: pincrack.c pincrack.h
 	$(GCC) $(GCC_OPTIONS) -c -o libpincrack.a pincrack.c
+
+libpincrack.so: pincrack.c pincrack.h
+	$(GCC) $(GCC_OPTIONS) -shared -c -o libpincrack.so pincrack.c
 
 clean:
 	rm -f *.o *.bin *.a sha1test client server pincracktest
